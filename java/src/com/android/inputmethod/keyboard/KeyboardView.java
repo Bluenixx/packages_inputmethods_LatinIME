@@ -35,6 +35,8 @@ import android.graphics.drawable.NinePatchDrawable;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.View;
+import android.animation.ValueAnimator;
+import android.view.animation.OvershootInterpolator;
 
 import androidx.preference.PreferenceManager;
 
@@ -46,6 +48,8 @@ import com.android.inputmethod.latin.settings.Settings;
 import com.android.inputmethod.latin.utils.TypefaceUtils;
 
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -91,6 +95,9 @@ public class KeyboardView extends View implements SharedPreferences.OnSharedPref
             | Paint.FILTER_BITMAP_FLAG);
     private Bitmap mBluenixxBackgroundBitmap;
     private String mBluenixxBackgroundUri;
+    private final Map<Key, Boolean> mKeyWasPressed = new HashMap<>();
+    private final Map<Key, Float> mKeySpringScales = new HashMap<>();
+    private final Map<Key, ValueAnimator> mKeySpringAnimators = new HashMap<>();
     // XML attributes
     private final KeyVisualAttributes mKeyVisualAttributes;
     // Default keyLabelFlags from {@link KeyboardTheme}.
@@ -363,7 +370,40 @@ public class KeyboardView extends View implements SharedPreferences.OnSharedPref
             @Nonnull final Paint paint) {
         final int keyDrawX = key.getDrawX() + getPaddingLeft();
         final int keyDrawY = key.getY() + getPaddingTop();
+        final boolean pressed = key.isPressed();
+        final Boolean wasPressed = mKeyWasPressed.put(key, pressed);
+        if (pressed) {
+            final ValueAnimator running = mKeySpringAnimators.remove(key);
+            if (running != null) running.cancel();
+            mKeySpringScales.put(key, 0.965f);
+        } else if (Boolean.TRUE.equals(wasPressed)) {
+            final ValueAnimator previous = mKeySpringAnimators.remove(key);
+            if (previous != null) previous.cancel();
+            final ValueAnimator spring = ValueAnimator.ofFloat(0.965f, 1.0f);
+            spring.setDuration(190L);
+            spring.setInterpolator(new OvershootInterpolator(2.6f));
+            spring.addUpdateListener(animation -> {
+                mKeySpringScales.put(key, (Float) animation.getAnimatedValue());
+                invalidateKey(key);
+            });
+            spring.addListener(new android.animation.AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(android.animation.Animator animation) {
+                    mKeySpringScales.remove(key);
+                    mKeySpringAnimators.remove(key);
+                    invalidateKey(key);
+                }
+            });
+            mKeySpringAnimators.put(key, spring);
+            spring.start();
+        }
+        final float springScale = pressed ? 0.965f
+                : mKeySpringScales.getOrDefault(key, 1.0f);
+        canvas.save();
         canvas.translate(keyDrawX, keyDrawY);
+        canvas.translate(key.getDrawWidth() * 0.5f, key.getHeight() * 0.5f);
+        canvas.scale(springScale, springScale);
+        canvas.translate(-key.getDrawWidth() * 0.5f, -key.getHeight() * 0.5f);
 
         final KeyVisualAttributes attr = key.getVisualAttributes();
         final KeyDrawParams params = mKeyDrawParams.mayCloneAndUpdateParams(key.getHeight(), attr);
@@ -380,7 +420,7 @@ public class KeyboardView extends View implements SharedPreferences.OnSharedPref
         }
         onDrawKeyTopVisuals(key, canvas, paint, params);
 
-        canvas.translate(-keyDrawX, -keyDrawY);
+        canvas.restore();
     }
 
     private void drawBluenixxKeyBackground(@Nonnull final Key key,

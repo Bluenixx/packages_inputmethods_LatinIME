@@ -2032,6 +2032,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         final CharSequence[] items = new CharSequence[] {
                 languageSelectionTitle,
                 getString(ApplicationUtils.getActivityTitleResId(this, SettingsActivity.class)),
+                getString(R.string.bluenixx_clipboard),
                 getString(R.string.bluenixx_translate_text)
         };
         final String imeId = mRichImm.getInputMethodIdOfThisIme();
@@ -2053,6 +2054,9 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                     launchSettings(SettingsActivity.EXTRA_ENTRY_VALUE_LONG_PRESS_COMMA);
                     break;
                 case 2:
+                    showBluenixxClipboardDialog();
+                    break;
+                case 3:
                     showBluenixxTranslationDialog();
                     break;
                 }
@@ -2067,8 +2071,40 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         showOptionDialog(dialog);
     }
 
-    /** Opens a lightweight translation flow through Google Translate's share target. */
+    /** Shows the current system clipboard item and inserts it into the focused editor. */
+    private void showBluenixxClipboardDialog() {
+        final android.content.ClipboardManager clipboard =
+                (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        final android.content.ClipData clip = clipboard == null ? null : clipboard.getPrimaryClip();
+        if (clip == null || clip.getItemCount() == 0
+                || clip.getItemAt(0).coerceToText(this) == null) {
+            android.widget.Toast.makeText(this, R.string.bluenixx_clipboard_empty,
+                    android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final CharSequence text = clip.getItemAt(0).coerceToText(this);
+        final AlertDialog dialog = new AlertDialog.Builder(
+                DialogUtils.getPlatformDialogThemeContext(this))
+                .setTitle(R.string.bluenixx_clipboard)
+                .setMessage(text)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.bluenixx_clipboard_paste, (di, which) -> {
+                    final android.view.inputmethod.InputConnection connection =
+                            getCurrentInputConnection();
+                    if (connection != null) connection.commitText(text, 1);
+                })
+                .create();
+        showOptionDialog(dialog);
+    }
+
+    /** Opens Google Translate with editable text and a selectable target language. */
     private void showBluenixxTranslationDialog() {
+        final android.widget.LinearLayout content = new android.widget.LinearLayout(this);
+        content.setOrientation(android.widget.LinearLayout.VERTICAL);
+        final int horizontalPadding = (int) (24 * getResources().getDisplayMetrics().density);
+        final int verticalPadding = (int) (8 * getResources().getDisplayMetrics().density);
+        content.setPadding(horizontalPadding, verticalPadding, horizontalPadding, 0);
+
         final EditText textInput = new EditText(this);
         textInput.setHint(R.string.bluenixx_translate_hint);
         textInput.setMinLines(3);
@@ -2091,29 +2127,48 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         } catch (RuntimeException e) {
             Log.w(TAG, "Unable to read text for translation", e);
         }
+        content.addView(textInput, new android.widget.LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+
+        final android.widget.Spinner languagePicker = new android.widget.Spinner(this);
+        final String[] languages = getResources().getStringArray(
+                R.array.bluenixx_translate_language_names);
+        final android.widget.ArrayAdapter<String> languageAdapter =
+                new android.widget.ArrayAdapter<>(this,
+                        android.R.layout.simple_spinner_item, languages);
+        languageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        languagePicker.setAdapter(languageAdapter);
+        languagePicker.setPrompt(R.string.bluenixx_translate_target_language);
+        languagePicker.setSelection(0);
+        content.addView(languagePicker, new android.widget.LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+
         final AlertDialog dialog = new AlertDialog.Builder(
                 DialogUtils.getPlatformDialogThemeContext(this))
                 .setTitle(R.string.bluenixx_translate_text)
-                .setView(textInput)
+                .setView(content)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.bluenixx_translate_open_google, (di, which) -> {
                     final String text = textInput.getText().toString().trim();
-                    if (text.isEmpty()) {
-                        return;
-                    }
-                    final Intent shareIntent = new Intent(Intent.ACTION_SEND);
-                    shareIntent.setType("text/plain");
-                    shareIntent.putExtra(Intent.EXTRA_TEXT, text);
-                    final Intent chooser = Intent.createChooser(shareIntent,
-                            getString(R.string.bluenixx_translate_open_google));
-                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    if (text.isEmpty()) return;
+                    final String[] codes = getResources().getStringArray(
+                            R.array.bluenixx_translate_language_codes);
+                    final String target = codes[Math.min(languagePicker.getSelectedItemPosition(),
+                            codes.length - 1)];
+                    final android.net.Uri uri = new android.net.Uri.Builder()
+                            .scheme("https").authority("translate.google.com")
+                            .appendQueryParameter("sl", "auto")
+                            .appendQueryParameter("tl", target)
+                            .appendQueryParameter("text", text)
+                            .appendQueryParameter("op", "translate").build();
+                    final Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     try {
                         requestHideSelf(0);
-                        startActivity(chooser);
+                        startActivity(intent);
                     } catch (android.content.ActivityNotFoundException e) {
-                        Log.w(TAG, "No application can handle translation text", e);
-                        android.widget.Toast.makeText(this,
-                                R.string.bluenixx_translate_no_app,
+                        Log.w(TAG, "No browser can open translation", e);
+                        android.widget.Toast.makeText(this, R.string.bluenixx_translate_no_app,
                                 android.widget.Toast.LENGTH_LONG).show();
                     }
                 })

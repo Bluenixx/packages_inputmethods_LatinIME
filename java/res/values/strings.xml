@@ -21,6 +21,42 @@
     <!-- Title for Latin keyboard input options dialog [CHAR LIMIT=25] -->
     <string name="english_ime_input_options">Input options</string>
     <string name="bluenixx_translate_text">Translate text</string>
+    <string name="bluenixx_clipboard">Clipboard</string>
+    <string name="bluenixx_clipboard_empty">Your clipboard is empty</string>
+    <string name="bluenixx_clipboard_paste">Paste clipboard</string>
+    <string name="bluenixx_translate_target_language">Translate to</string>
+    <string name="bluenixx_translate_language_english">English</string>
+    <string name="bluenixx_translate_language_portuguese">Portuguese</string>
+    <string name="bluenixx_translate_language_spanish">Spanish</string>
+    <string name="bluenixx_translate_language_french">French</string>
+    <string name="bluenixx_translate_language_german">German</string>
+    <string name="bluenixx_translate_language_italian">Italian</string>
+    <string name="bluenixx_translate_language_japanese">Japanese</string>
+    <string name="bluenixx_translate_language_korean">Korean</string>
+    <string name="bluenixx_translate_language_chinese">Chinese (simplified)</string>
+    <string name="bluenixx_translate_language_arabic">Arabic</string>
+    <string name="bluenixx_translate_language_hindi">Hindi</string>
+    <string name="bluenixx_translate_language_russian">Russian</string>
+    <string name="bluenixx_translate_language_auto">Auto-detect</string>
+    <string-array name="bluenixx_translate_language_names">
+        <item>@string/bluenixx_translate_language_portuguese</item>
+        <item>@string/bluenixx_translate_language_english</item>
+        <item>@string/bluenixx_translate_language_spanish</item>
+        <item>@string/bluenixx_translate_language_french</item>
+        <item>@string/bluenixx_translate_language_german</item>
+        <item>@string/bluenixx_translate_language_italian</item>
+        <item>@string/bluenixx_translate_language_japanese</item>
+        <item>@string/bluenixx_translate_language_korean</item>
+        <item>@string/bluenixx_translate_language_chinese</item>
+        <item>@string/bluenixx_translate_language_arabic</item>
+        <item>@string/bluenixx_translate_language_hindi</item>
+        <item>@string/bluenixx_translate_language_russian</item>
+    </string-array>
+    <string-array name="bluenixx_translate_language_codes" translatable="false">
+        <item>pt</item><item>en</item><item>es</item><item>fr</item>
+        <item>de</item><item>it</item><item>ja</item><item>ko</item>
+        <item>zh-CN</item><item>ar</item><item>hi</item><item>ru</item>
+    </string-array>
     <string name="bluenixx_translate_hint">Text to translate</string>
     <string name="bluenixx_translate_open_google">Open translation app</string>
     <string name="bluenixx_translate_no_app">No app is available to receive text for translation.</string>

@@ -945,6 +945,11 @@ public class Key implements Comparable<Key> {
         mPressed = false;
     }
 
+    /** Returns whether this key is currently held by a pointer tracker. */
+    public final boolean isPressed() {
+        return mPressed;
+    }
+
     public final boolean isEnabled() {
         return mEnabled;
     }
