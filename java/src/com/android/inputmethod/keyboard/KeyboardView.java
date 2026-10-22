@@ -20,6 +20,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -29,6 +30,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.graphics.drawable.NinePatchDrawable;
 import android.text.TextUtils;
 import android.util.AttributeSet;
@@ -83,8 +85,12 @@ import javax.annotation.Nullable;
  * @attr ref android.R.styleable#Keyboard_Key_keyShiftedLetterHintActivatedColor
  * @attr ref android.R.styleable#Keyboard_Key_keyPreviewTextColor
  */
-public class KeyboardView extends View {
+public class KeyboardView extends View implements SharedPreferences.OnSharedPreferenceChangeListener {
     private final Paint mBluenixxOutlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mBluenixxBackgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG
+            | Paint.FILTER_BITMAP_FLAG);
+    private Bitmap mBluenixxBackgroundBitmap;
+    private String mBluenixxBackgroundUri;
     // XML attributes
     private final KeyVisualAttributes mKeyVisualAttributes;
     // Default keyLabelFlags from {@link KeyboardTheme}.
@@ -173,6 +179,24 @@ public class KeyboardView extends View {
         keyAttr.recycle();
 
         mPaint.setAntiAlias(true);
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .registerOnSharedPreferenceChangeListener(this);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        PreferenceManager.getDefaultSharedPreferences(getContext())
+                .unregisterOnSharedPreferenceChangeListener(this);
+        super.onDetachedFromWindow();
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences,
+            @Nullable final String key) {
+        if (key != null && key.startsWith("bluenixx_")) {
+            invalidateAllKeys();
+            invalidate();
+        }
     }
 
     @Nullable
@@ -350,11 +374,74 @@ public class KeyboardView extends View {
             if (background != null) {
                 onDrawKeyBackground(key, canvas, background);
             }
+            drawBluenixxKeyBackground(key, canvas);
             drawBluenixxKeyOutline(key, canvas);
         }
         onDrawKeyTopVisuals(key, canvas, paint, params);
 
         canvas.translate(-keyDrawX, -keyDrawY);
+    }
+
+    private void drawBluenixxKeyBackground(@Nonnull final Key key,
+            @Nonnull final Canvas canvas) {
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        final String uriValue = prefs.getString("bluenixx_keyboard_background_uri", null);
+        if (TextUtils.isEmpty(uriValue)) {
+            if (mBluenixxBackgroundBitmap != null) {
+                mBluenixxBackgroundBitmap.recycle();
+                mBluenixxBackgroundBitmap = null;
+            }
+            mBluenixxBackgroundUri = null;
+            return;
+        }
+        if (!uriValue.equals(mBluenixxBackgroundUri)) {
+            if (mBluenixxBackgroundBitmap != null) {
+                mBluenixxBackgroundBitmap.recycle();
+                mBluenixxBackgroundBitmap = null;
+            }
+            mBluenixxBackgroundUri = uriValue;
+            try (java.io.InputStream stream = getContext().getContentResolver()
+                    .openInputStream(Uri.parse(uriValue))) {
+                if (stream != null) {
+                    final BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inJustDecodeBounds = true;
+                    // Decode a bounded copy to avoid retaining full-resolution camera images.
+                    try (java.io.InputStream boundsStream = getContext().getContentResolver()
+                            .openInputStream(Uri.parse(uriValue))) {
+                        if (boundsStream != null) BitmapFactory.decodeStream(boundsStream, null, options);
+                    }
+                    int sample = 1;
+                    while (options.outWidth / sample > Math.max(1, getWidth()) * 2
+                            || options.outHeight / sample > Math.max(1, getHeight()) * 2) {
+                        sample *= 2;
+                    }
+                    final BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+                    decodeOptions.inSampleSize = sample;
+                    mBluenixxBackgroundBitmap = BitmapFactory.decodeStream(stream, null, decodeOptions);
+                }
+            } catch (Exception ignored) {
+                mBluenixxBackgroundBitmap = null;
+            }
+        }
+        if (mBluenixxBackgroundBitmap == null) {
+            return;
+        }
+        final int opacity;
+        try {
+            opacity = Integer.parseInt(prefs.getString(
+                    "bluenixx_keyboard_background_opacity", "150"));
+        } catch (NumberFormatException ignored) {
+            // Use balanced opacity for invalid preference values.
+            opacity = 150;
+        }
+        mBluenixxBackgroundPaint.setAlpha(Math.max(0, Math.min(255, opacity)));
+        final int x = key.getDrawX() + getPaddingLeft();
+        final int y = key.getY() + getPaddingTop();
+        canvas.save();
+        canvas.clipRect(0, 0, key.getDrawWidth(), key.getHeight());
+        final RectF destination = new RectF(-x, -y, getWidth() - x, getHeight() - y);
+        canvas.drawBitmap(mBluenixxBackgroundBitmap, null, destination, mBluenixxBackgroundPaint);
+        canvas.restore();
     }
 
     private void drawBluenixxKeyOutline(@Nonnull final Key key, @Nonnull final Canvas canvas) {
@@ -376,10 +463,38 @@ public class KeyboardView extends View {
                 color = Color.WHITE;
             }
         }
+        final float density = getResources().getDisplayMetrics().density;
+        final float outlineWidth;
+        try {
+            outlineWidth = Float.parseFloat(prefs.getString(
+                    "bluenixx_key_outline_width", "1")) * density;
+        } catch (NumberFormatException ignored) {
+            // Fall back to a one dp outline if preferences contain an invalid value.
+            outlineWidth = density;
+        }
+        final int outlineAlpha;
+        try {
+            outlineAlpha = Integer.parseInt(prefs.getString(
+                    "bluenixx_key_outline_opacity", "150"));
+        } catch (NumberFormatException ignored) {
+            outlineAlpha = 150;
+        }
+        final float glow;
+        try {
+            glow = Float.parseFloat(prefs.getString("bluenixx_key_outline_glow", "0"))
+                    * density;
+        } catch (NumberFormatException ignored) {
+            glow = 0f;
+        }
         mBluenixxOutlinePaint.setStyle(Paint.Style.STROKE);
-        mBluenixxOutlinePaint.setStrokeWidth(getResources().getDisplayMetrics().density);
+        mBluenixxOutlinePaint.setStrokeWidth(outlineWidth);
         mBluenixxOutlinePaint.setColor(color);
-        mBluenixxOutlinePaint.setAlpha(150);
+        mBluenixxOutlinePaint.setAlpha(Math.max(0, Math.min(255, outlineAlpha)));
+        if (glow > 0f) {
+            mBluenixxOutlinePaint.setShadowLayer(glow, 0f, 0f, color);
+        } else {
+            mBluenixxOutlinePaint.clearShadowLayer();
+        }
         final float inset = mBluenixxOutlinePaint.getStrokeWidth() / 2f;
         final RectF bounds = new RectF(inset, inset,
                 Math.max(inset, key.getDrawWidth() - inset),

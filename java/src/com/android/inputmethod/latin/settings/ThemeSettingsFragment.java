@@ -17,6 +17,8 @@
 package com.android.inputmethod.latin.settings;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.content.res.Resources;
 import android.os.Bundle;
 import androidx.preference.Preference;
@@ -33,6 +35,8 @@ import com.android.inputmethod.latin.settings.RadioButtonPreference.OnRadioButto
  */
 public final class ThemeSettingsFragment extends SubScreenFragment
         implements OnRadioButtonClickedListener {
+    private static final int REQUEST_KEYBOARD_BACKGROUND = 4107;
+    private static final String KEY_BACKGROUND_URI = "bluenixx_keyboard_background_uri";
     private int mSelectedThemeId;
 
     static class KeyboardThemePreference extends RadioButtonPreference {
@@ -87,6 +91,66 @@ public final class ThemeSettingsFragment extends SubScreenFragment
         outlineColor.setDefaultValue("monet");
         screen.addPreference(outlineColor);
 
+        final ListPreference outlineWidth = new ListPreference(context);
+        outlineWidth.setKey("bluenixx_key_outline_width");
+        outlineWidth.setTitle("Outline thickness");
+        outlineWidth.setDialogTitle("Choose outline thickness");
+        outlineWidth.setEntries(new CharSequence[] {"Thin", "Medium", "Thick"});
+        outlineWidth.setEntryValues(new CharSequence[] {"1", "1.5", "2"});
+        outlineWidth.setDefaultValue("1");
+        screen.addPreference(outlineWidth);
+
+        final ListPreference outlineOpacity = new ListPreference(context);
+        outlineOpacity.setKey("bluenixx_key_outline_opacity");
+        outlineOpacity.setTitle("Outline brightness");
+        outlineOpacity.setDialogTitle("Choose outline brightness");
+        outlineOpacity.setEntries(new CharSequence[] {"Subtle", "Balanced", "Bright"});
+        outlineOpacity.setEntryValues(new CharSequence[] {"90", "150", "220"});
+        outlineOpacity.setDefaultValue("150");
+        screen.addPreference(outlineOpacity);
+
+        final ListPreference outlineGlow = new ListPreference(context);
+        outlineGlow.setKey("bluenixx_key_outline_glow");
+        outlineGlow.setTitle("Outline glow");
+        outlineGlow.setDialogTitle("Choose outline glow");
+        outlineGlow.setEntries(new CharSequence[] {"Off", "Soft", "Strong"});
+        outlineGlow.setEntryValues(new CharSequence[] {"0", "3", "7"});
+        outlineGlow.setDefaultValue("0");
+        screen.addPreference(outlineGlow);
+
+        final Preference backgroundImage = new Preference(context);
+        backgroundImage.setKey("bluenixx_keyboard_background_picker");
+        backgroundImage.setTitle("Keyboard background photo");
+        backgroundImage.setSummary("Choose a photo to use on keyboard keys");
+        backgroundImage.setOnPreferenceClickListener(pref -> {
+            final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("image/*");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            startActivityForResult(intent, REQUEST_KEYBOARD_BACKGROUND);
+            return true;
+        });
+        screen.addPreference(backgroundImage);
+
+        final ListPreference backgroundOpacity = new ListPreference(context);
+        backgroundOpacity.setKey("bluenixx_keyboard_background_opacity");
+        backgroundOpacity.setTitle("Photo opacity");
+        backgroundOpacity.setDialogTitle("Choose photo opacity");
+        backgroundOpacity.setEntries(new CharSequence[] {"Subtle", "Balanced", "Strong"});
+        backgroundOpacity.setEntryValues(new CharSequence[] {"70", "150", "230"});
+        backgroundOpacity.setDefaultValue("150");
+        screen.addPreference(backgroundOpacity);
+
+        final Preference clearBackground = new Preference(context);
+        clearBackground.setTitle("Remove background photo");
+        clearBackground.setSummary("Return to the selected keyboard theme");
+        clearBackground.setOnPreferenceClickListener(pref -> {
+            getSharedPreferences().edit().remove(KEY_BACKGROUND_URI).apply();
+            return true;
+        });
+        screen.addPreference(clearBackground);
+
         final SwitchPreferenceCompat outline = new SwitchPreferenceCompat(context);
         outline.setKey("bluenixx_key_outline_enabled");
         outline.setTitle("Key outlines");
@@ -107,6 +171,27 @@ public final class ThemeSettingsFragment extends SubScreenFragment
         smoothAnimations.setSummary("Use smoother transitions where supported");
         smoothAnimations.setDefaultValue(true);
         screen.addPreference(smoothAnimations);
+    }
+
+    @Override
+    public void onActivityResult(final int requestCode, final int resultCode,
+            final Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_KEYBOARD_BACKGROUND || data == null
+                || resultCode != android.app.Activity.RESULT_OK) {
+            return;
+        }
+        final Uri uri = data.getData();
+        if (uri == null) {
+            return;
+        }
+        try {
+            getActivity().getContentResolver().takePersistableUriPermission(uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException ignored) {
+            // Some document providers grant only a temporary read permission.
+        }
+        getSharedPreferences().edit().putString(KEY_BACKGROUND_URI, uri.toString()).apply();
     }
 
     @Override
