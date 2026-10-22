@@ -2138,7 +2138,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                         android.R.layout.simple_spinner_item, languages);
         languageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         languagePicker.setAdapter(languageAdapter);
-        languagePicker.setPrompt(R.string.bluenixx_translate_target_language);
+        languagePicker.setPrompt(getText(R.string.bluenixx_translate_target_language));
         languagePicker.setSelection(0);
         content.addView(languagePicker, new android.widget.LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
