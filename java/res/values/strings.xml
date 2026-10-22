@@ -20,6 +20,10 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <!-- Title for Latin keyboard input options dialog [CHAR LIMIT=25] -->
     <string name="english_ime_input_options">Input options</string>
+    <string name="bluenixx_translate_text">Translate text</string>
+    <string name="bluenixx_translate_hint">Text to translate</string>
+    <string name="bluenixx_translate_open_google">Open translation app</string>
+    <string name="bluenixx_translate_no_app">No app is available to receive text for translation.</string>
 
     <!-- Title for the spell checker option to turn on/off contact names lookup [CHAR LIMIT=25] -->
     <string name="use_contacts_for_spellchecking_option_title">Look up contact names</string>
