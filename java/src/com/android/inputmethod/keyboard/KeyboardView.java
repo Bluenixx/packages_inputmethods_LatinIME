@@ -188,6 +188,7 @@ public class KeyboardView extends View implements SharedPreferences.OnSharedPref
         PreferenceManager.getDefaultSharedPreferences(getContext())
                 .unregisterOnSharedPreferenceChangeListener(this);
         super.onDetachedFromWindow();
+        freeOffscreenBuffer();
     }
 
     @Override
@@ -726,12 +727,6 @@ public class KeyboardView extends View implements SharedPreferences.OnSharedPref
         final int x = key.getX() + getPaddingLeft();
         final int y = key.getY() + getPaddingTop();
         invalidate(x, y, x + key.getWidth(), y + key.getHeight());
-    }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        super.onDetachedFromWindow();
-        freeOffscreenBuffer();
     }
 
     public void deallocateMemory() {
