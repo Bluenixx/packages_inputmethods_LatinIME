@@ -21,6 +21,8 @@ import android.content.res.Resources;
 import android.os.Bundle;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceScreen;
+import androidx.preference.ListPreference;
+import androidx.preference.SwitchPreferenceCompat;
 
 import com.android.inputmethod.keyboard.KeyboardTheme;
 import com.android.inputmethod.latin.R;
@@ -73,6 +75,38 @@ public final class ThemeSettingsFragment extends SubScreenFragment
             pref.setOnRadioButtonClickedListener(this);
         }
         mSelectedThemeId = KeyboardTheme.getSelectedKeyboardThemeId(context);
+
+        // Bluenixx keyboard customization. These preferences are consumed by KeyboardView.
+        final ListPreference outlineColor = new ListPreference(context);
+        outlineColor.setKey("bluenixx_key_outline_color");
+        outlineColor.setTitle("Key outline color");
+        outlineColor.setDialogTitle("Choose outline color");
+        outlineColor.setEntries(new CharSequence[] {"Monet", "White", "Black", "Blue", "Purple"});
+        outlineColor.setEntryValues(new CharSequence[] {"monet", "#FFFFFFFF", "#FF000000",
+                "#FF448AFF", "#FFBB86FC"});
+        outlineColor.setDefaultValue("monet");
+        screen.addPreference(outlineColor);
+
+        final SwitchPreferenceCompat outline = new SwitchPreferenceCompat(context);
+        outline.setKey("bluenixx_key_outline_enabled");
+        outline.setTitle("Key outlines");
+        outline.setSummary("Draw a subtle outline around each key");
+        outline.setDefaultValue(false);
+        screen.addPreference(outline);
+
+        final SwitchPreferenceCompat pressEffect = new SwitchPreferenceCompat(context);
+        pressEffect.setKey("bluenixx_key_press_effect");
+        pressEffect.setTitle("Touch feedback");
+        pressEffect.setSummary("Enable enhanced visual feedback when pressing keys");
+        pressEffect.setDefaultValue(true);
+        screen.addPreference(pressEffect);
+
+        final SwitchPreferenceCompat smoothAnimations = new SwitchPreferenceCompat(context);
+        smoothAnimations.setKey("bluenixx_smooth_key_animations");
+        smoothAnimations.setTitle("Smooth keyboard animations");
+        smoothAnimations.setSummary("Use smoother transitions where supported");
+        smoothAnimations.setDefaultValue(true);
+        screen.addPreference(smoothAnimations);
     }
 
     @Override

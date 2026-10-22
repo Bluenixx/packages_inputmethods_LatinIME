@@ -17,6 +17,7 @@
 package com.android.inputmethod.keyboard;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -25,12 +26,15 @@ import android.graphics.Paint;
 import android.graphics.Paint.Align;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.NinePatchDrawable;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.View;
+
+import androidx.preference.PreferenceManager;
 
 import com.android.inputmethod.keyboard.internal.KeyDrawParams;
 import com.android.inputmethod.keyboard.internal.KeyVisualAttributes;
@@ -80,6 +84,7 @@ import javax.annotation.Nullable;
  * @attr ref android.R.styleable#Keyboard_Key_keyPreviewTextColor
  */
 public class KeyboardView extends View {
+    private final Paint mBluenixxOutlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     // XML attributes
     private final KeyVisualAttributes mKeyVisualAttributes;
     // Default keyLabelFlags from {@link KeyboardTheme}.
@@ -345,10 +350,42 @@ public class KeyboardView extends View {
             if (background != null) {
                 onDrawKeyBackground(key, canvas, background);
             }
+            drawBluenixxKeyOutline(key, canvas);
         }
         onDrawKeyTopVisuals(key, canvas, paint, params);
 
         canvas.translate(-keyDrawX, -keyDrawY);
+    }
+
+    private void drawBluenixxKeyOutline(@Nonnull final Key key, @Nonnull final Canvas canvas) {
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        if (!prefs.getBoolean("bluenixx_key_outline_enabled", false)) {
+            return;
+        }
+        final String colorValue = prefs.getString("bluenixx_key_outline_color", "monet");
+        int color = Color.WHITE;
+        if ("monet".equals(colorValue)) {
+            final TypedArray colors = getContext().obtainStyledAttributes(
+                    new int[] { android.R.attr.colorAccent });
+            color = colors.getColor(0, Color.WHITE);
+            colors.recycle();
+        } else {
+            try {
+                color = Color.parseColor(colorValue);
+            } catch (IllegalArgumentException ignored) {
+                color = Color.WHITE;
+            }
+        }
+        mBluenixxOutlinePaint.setStyle(Paint.Style.STROKE);
+        mBluenixxOutlinePaint.setStrokeWidth(getResources().getDisplayMetrics().density);
+        mBluenixxOutlinePaint.setColor(color);
+        mBluenixxOutlinePaint.setAlpha(150);
+        final float inset = mBluenixxOutlinePaint.getStrokeWidth() / 2f;
+        final RectF bounds = new RectF(inset, inset,
+                Math.max(inset, key.getDrawWidth() - inset),
+                Math.max(inset, key.getHeight() - inset));
+        canvas.drawRoundRect(bounds, 5f * getResources().getDisplayMetrics().density,
+                5f * getResources().getDisplayMetrics().density, mBluenixxOutlinePaint);
     }
 
     // Draw key background.
