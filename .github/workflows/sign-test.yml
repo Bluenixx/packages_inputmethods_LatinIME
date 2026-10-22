@@ -1,0 +1,40 @@
+
+name: Sign LatinIME test APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sign:
+    if: github.ref == 'refs/heads/lineage-24.0'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build APK
+        uses: ./.github/workflows/build
+
+      - name: Sign APK
+        env:
+          KEY_B64: ${{ secrets.RELEASEKEY_PK8_B64 }}
+          CERT_B64: ${{ secrets.RELEASEKEY_CERT_B64 }}
+        run: |
+          set -e
+          mkdir -p "$RUNNER_TEMP/signing"
+          trap 'rm -rf "$RUNNER_TEMP/signing"' EXIT
+          echo "$KEY_B64" | base64 -d > "$RUNNER_TEMP/signing/releasekey.pk8"
+          echo "$CERT_B64" | base64 -d > "$RUNNER_TEMP/signing/releasekey.x509.pem"
+          APK=build/outputs/apk/debug/LatinIME-debug.apk
+          $ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner sign \
+            --key "$RUNNER_TEMP/signing/releasekey.pk8" \
+            --cert "$RUNNER_TEMP/signing/releasekey.x509.pem" \
+            --out "$RUNNER_TEMP/LatinIME-signed.apk" "$APK"
+          $ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify "$RUNNER_TEMP/LatinIME-signed.apk"
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LatinIME-signed-test
+          path: ${{ runner.temp }}/LatinIME-signed.apk
