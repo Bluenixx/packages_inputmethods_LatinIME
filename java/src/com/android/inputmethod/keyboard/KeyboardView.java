@@ -427,7 +427,7 @@ public class KeyboardView extends View implements SharedPreferences.OnSharedPref
         if (mBluenixxBackgroundBitmap == null) {
             return;
         }
-        final int opacity;
+        int opacity;
         try {
             opacity = Integer.parseInt(prefs.getString(
                     "bluenixx_keyboard_background_opacity", "150"));
@@ -465,7 +465,7 @@ public class KeyboardView extends View implements SharedPreferences.OnSharedPref
             }
         }
         final float density = getResources().getDisplayMetrics().density;
-        final float outlineWidth;
+        float outlineWidth;
         try {
             outlineWidth = Float.parseFloat(prefs.getString(
                     "bluenixx_key_outline_width", "1")) * density;
@@ -473,14 +473,14 @@ public class KeyboardView extends View implements SharedPreferences.OnSharedPref
             // Fall back to a one dp outline if preferences contain an invalid value.
             outlineWidth = density;
         }
-        final int outlineAlpha;
+        int outlineAlpha;
         try {
             outlineAlpha = Integer.parseInt(prefs.getString(
                     "bluenixx_key_outline_opacity", "150"));
         } catch (NumberFormatException ignored) {
             outlineAlpha = 150;
         }
-        final float glow;
+        float glow;
         try {
             glow = Float.parseFloat(prefs.getString("bluenixx_key_outline_glow", "0"))
                     * density;
